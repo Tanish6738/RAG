@@ -290,7 +290,6 @@ flowchart TD
     style BACKGROUND fill:#e8f5e9,stroke:#4caf50
     style STATUS fill:#e3f2fd,stroke:#2196f3
 ```
-
 ## 2.3 Chat / Retrieval Pipeline
 
 ```mermaid
@@ -298,89 +297,97 @@ flowchart TD
     USER([👤 User Query]) --> RECEIVE
 
     subgraph REQUEST_LAYER["📨 Request Processing"]
-        RECEIVE[Receive Query<br/>+ session_id + request_id]
-        SANITIZE[Input Sanitization<br/>length, injection check]
-        LOAD_SESSION[Load Session Memory<br/>from Redis]
+        RECEIVE["Receive Query\nsession_id + request_id"]
+        SANITIZE["Input Sanitization\nlength, injection check"]
+        LOAD_SESSION["Load Session Memory\nfrom Redis"]
         RECEIVE --> SANITIZE --> LOAD_SESSION
     end
 
     LOAD_SESSION --> AGENT_ENTRY
 
-    subgraph AGENT_ORCHESTRATION["🧠 AI Agent Orchestration - ReAct"]
-        AGENT_ENTRY[Agent Entry Point]
-        
+    subgraph AGENT_ORCHESTRATION["🧠 AI Agent Orchestration (ReAct)"]
+        AGENT_ENTRY["Agent Entry Point"]
+
         subgraph REASONING["🤔 ReAct Reasoning Loop"]
-            THINK[THINK: Analyze Query<br/>What does the user need?]
-            PLAN[PLAN: Select Strategy<br/>Which tools to use?]
-            ACT[ACT: Execute Tool<br/>Call selected tool]
-            OBSERVE[OBSERVE: Process Result<br/>Is the answer complete?]
-            
+            THINK["THINK\nAnalyze Query\nWhat does the user need?"]
+            PLAN["PLAN\nSelect Strategy\nWhich tools to use?"]
+            ACT["ACT\nExecute Tool"]
+            OBSERVE["OBSERVE\nProcess Result\nIs the answer complete?"]
+
             THINK --> PLAN --> ACT --> OBSERVE
             OBSERVE -->|Need more info| THINK
             OBSERVE -->|Complete| SYNTHESIZE
         end
 
-        SYNTHESIZE[Synthesize Final Answer<br/>Combine all observations]
+        SYNTHESIZE["Synthesize Final Answer\nCombine all observations"]
     end
 
     AGENT_ENTRY --> THINK
 
-    subgraph TOOLS_EXEC["🛠️ Tool Execution"]
+    subgraph TOOLS_EXEC["🛠 Tool Execution"]
+
         subgraph DOC_SEARCH["📚 DocumentSearchTool"]
-            QUERY_ENHANCE[Query Enhancement<br/>HyDE + expansion]
-            EMBED_QUERY[Embed Query<br/>EmbeddingProvider]
-            QDRANT_SEARCH[Qdrant Similarity Search<br/>top-k=5, threshold=0.7]
-            RERANK[Result Reranking<br/>cross-encoder score]
-            CONTEXT[Retrieved Context Chunks<br/>with metadata]
+            QUERY_ENHANCE["Query Enhancement\nHyDE + Expansion"]
+            EMBED_QUERY["Embed Query\nEmbedding Provider"]
+            QDRANT_SEARCH["Qdrant Similarity Search\nTop-K = 5\nThreshold = 0.7"]
+            RERANK["Cross-Encoder Reranking"]
+            CONTEXT["Retrieved Context\nChunks + Metadata"]
+
+            QUERY_ENHANCE --> EMBED_QUERY --> QDRANT_SEARCH --> RERANK --> CONTEXT
         end
 
         subgraph CALC["🔢 CalculatorTool"]
-            MATH_PARSE[Parse Math Expression]
-            EVALUATE[Safe Evaluation<br/>no code execution]
-            MATH_RESULT[Numeric Result]
+            MATH_PARSE["Parse Math Expression"]
+            EVALUATE["Safe Evaluation\nNo Code Execution"]
+            MATH_RESULT["Numeric Result"]
+
+            MATH_PARSE --> EVALUATE --> MATH_RESULT
         end
 
         subgraph META_SEARCH["📋 MetadataSearchTool"]
-            LIST_DOCS[List Available Documents]
-            FILTER[Filter by date/type/author]
-            META_RESULT[Document Metadata Results]
+            LIST_DOCS["List Documents"]
+            FILTER["Filter\nDate / Type / Author"]
+            META_RESULT["Metadata Results"]
+
+            LIST_DOCS --> FILTER --> META_RESULT
         end
+
     end
 
-    ACT --> DOC_SEARCH
-    ACT --> CALC
-    ACT --> META_SEARCH
+    ACT --> QUERY_ENHANCE
+    ACT --> MATH_PARSE
+    ACT --> LIST_DOCS
 
     subgraph RAG_PIPELINE["🔄 RAG Pipeline"]
-        CTX_BUILD[Context Builder<br/>rank + deduplicate chunks]
-        CITATION_MAP[Citation Mapper<br/>chunk → source document]
-        PROMPT_BUILD[Prompt Builder<br/>from Prompt Registry]
-        TOKEN_COUNT[Token Counter<br/>fit within context window]
+        CTX_BUILD["Context Builder\nRank + Deduplicate"]
+        CITATION_MAP["Citation Mapper\nChunk → Source"]
+        PROMPT_BUILD["Prompt Builder\nPrompt Registry"]
+        TOKEN_COUNT["Token Counter\nContext Window"]
     end
 
     SYNTHESIZE --> CTX_BUILD
     CTX_BUILD --> CITATION_MAP --> PROMPT_BUILD --> TOKEN_COUNT
 
     subgraph LLM_GENERATION["🤖 LLM Generation"]
-        LLM_CALL[LLMProvider.generate<br/>abstracted call]
-        
-        subgraph STREAMING["📡 Streaming - SSE"]
-            CHUNK_STREAM[Chunk by Chunk<br/>token streaming]
-            SSE_FORMAT[SSE Format<br/>data: {...}\n\n]
-            CLIENT_STREAM[Stream to Client<br/>FastAPI StreamingResponse]
+        LLM_CALL["LLMProvider.generate()"]
+
+        subgraph STREAMING["📡 Streaming (SSE)"]
+            CHUNK_STREAM["Token Streaming"]
+            SSE_FORMAT["SSE Formatting"]
+            CLIENT_STREAM["StreamingResponse\nFastAPI"]
         end
 
-        VALIDATE_RESP[Response Validator<br/>hallucination detection]
+        VALIDATE_RESP["Response Validator\nHallucination Detection"]
     end
 
     TOKEN_COUNT --> LLM_CALL
     LLM_CALL --> CHUNK_STREAM --> SSE_FORMAT --> CLIENT_STREAM
 
     subgraph POST_PROCESS["✨ Post Processing"]
-        EXTRACT_CITATIONS[Extract Citations<br/>from generated text]
-        FORMAT_RESP[Format Response<br/>answer + citations + metadata]
-        SAVE_MEMORY[Save to Memory<br/>Redis + conversation history]
-        LOG_INTERACTION[Log Interaction<br/>for analytics]
+        EXTRACT_CITATIONS["Extract Citations"]
+        FORMAT_RESP["Format Response\nAnswer + Citations + Metadata"]
+        SAVE_MEMORY["Save Conversation\nRedis Memory"]
+        LOG_INTERACTION["Analytics Logging"]
     end
 
     CLIENT_STREAM --> EXTRACT_CITATIONS
@@ -400,44 +407,46 @@ flowchart TD
 
 ```mermaid
 flowchart LR
+
     subgraph QUERY_PROC["Query Processing"]
-        Q[Raw Query] --> QE[Query Enhancement]
-        QE --> HYDE[HyDE Generation<br/>hypothetical document]
-        HYDE --> QV[Query Vector<br/>embedding]
+        Q["Raw Query"] --> QE["Query Enhancement"]
+        QE --> HYDE["HyDE Generation\nHypothetical Document"]
+        HYDE --> QV["Query Embedding"]
         Q --> QV
     end
 
     subgraph RETRIEVAL["Multi-Stage Retrieval"]
-        QV --> DENSE[Dense Search<br/>cosine similarity<br/>Qdrant ANN]
-        QV --> FILTER[Metadata Filter<br/>doc_id, date, type]
-        DENSE --> CANDIDATES[Top-20 Candidates]
+        QV --> DENSE["Dense Search\nCosine Similarity\nQdrant ANN"]
+        QV --> FILTER["Metadata Filter\nDoc ID / Date / Type"]
+        DENSE --> CANDIDATES["Top-20 Candidates"]
         FILTER --> CANDIDATES
-        CANDIDATES --> RERANK[Cross-Encoder Rerank<br/>Top-5 selected]
+        CANDIDATES --> RERANK["Cross-Encoder Rerank\nTop-5"]
     end
 
     subgraph CONTEXT["Context Construction"]
-        RERANK --> DEDUP[Deduplication<br/>remove overlapping chunks]
-        DEDUP --> SORT[Sort by<br/>relevance + page order]
-        SORT --> WINDOW[Context Window<br/>token budget allocation]
-        WINDOW --> CMAP[Citation Map<br/>chunk_id → doc_id + page]
+        RERANK --> DEDUP["Deduplicate Chunks"]
+        DEDUP --> SORT["Sort\nRelevance + Page Order"]
+        SORT --> WINDOW["Context Window\nToken Budget"]
+        WINDOW --> CMAP["Citation Map\nChunk → Document + Page"]
     end
 
     subgraph PROMPT["Prompt Assembly"]
-        CMAP --> SYS[System Prompt<br/>v2.1 from Registry]
-        CMAP --> CTX_BLOCK[Context Block<br/>numbered chunks]
-        CMAP --> HIST[History Block<br/>last N turns]
-        CMAP --> QBLOCK[Question Block]
-        SYS --> FINAL_PROMPT[Final Prompt]
+        CMAP --> SYS["System Prompt\nRegistry v2.1"]
+        CMAP --> CTX_BLOCK["Context Block"]
+        CMAP --> HIST["Conversation History"]
+        CMAP --> QBLOCK["Question"]
+
+        SYS --> FINAL_PROMPT["Final Prompt"]
         CTX_BLOCK --> FINAL_PROMPT
         HIST --> FINAL_PROMPT
         QBLOCK --> FINAL_PROMPT
     end
 
     subgraph GENERATION["LLM Generation"]
-        FINAL_PROMPT --> LLM[LLMProvider<br/>abstraction]
-        LLM --> STREAM[Streaming Tokens]
-        STREAM --> PARSE[Citation Parser<br/>extract [1][2][3]]
-        PARSE --> RESP[Structured Response<br/>answer + citations]
+        FINAL_PROMPT --> LLM["LLMProvider"]
+        LLM --> STREAM["Streaming Tokens"]
+        STREAM --> PARSE["Citation Parser\nExtract References"]
+        PARSE --> RESP["Structured Response\nAnswer + Citations"]
     end
 
     style QUERY_PROC fill:#e3f2fd
@@ -4625,5 +4634,3 @@ GEMINI (Dev)  ←→  LLMProvider  ←→  BEDROCK (Prod)
     Docker → ECR → ECS Fargate → Bedrock + Qdrant
               (Deployment - production on AWS)
 ```
-
-This roadmap produces a **portfolio-quality Enterprise AI Agent** demonstrating real-world AI Systems Engineering: provider abstraction, prompt versioning, clean architecture, production observability, and a seamless Gemini → Amazon Bedrock migration path.
